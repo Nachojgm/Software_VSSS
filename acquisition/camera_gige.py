@@ -46,10 +46,10 @@ class GigECamera(CameraBase):
         # --- CONVERSIÓN CORRECTA PARA FLIR ---
         # BayerRG8 -> BGR
         if len(img.shape) == 2:
-            img = cv2.cvtColor(img, cv2.COLOR_BAYER_RG2BGR)
+            img = cv2.cvtColor(img, cv2.COLOR_BAYER_BG2BGR)
 
         elif len(img.shape) == 3 and img.shape[2] == 1:
-            img = cv2.cvtColor(img, cv2.COLOR_BAYER_RG2BGR)
+            img = cv2.cvtColor(img, cv2.COLOR_BAYER_BG2BGR)
 
         elif len(img.shape) == 3 and img.shape[2] == 3:
             pass  # ya está bien
