@@ -1,11 +1,12 @@
 param(
     [switch]$Run,
-    [ValidateSet("mock", "webcam", "gige")]
+    [ValidateSet("mock", "webcam", "gige", "gige-bridge")]
     [string]$Camera = "mock",
     [string]$Port = "",
     [string]$SpinnakerWheel = "",
     [switch]$Send,
-    [switch]$SkipSpinnaker
+    [switch]$SkipSpinnaker,
+    [switch]$SkipBridge
 )
 
 $ErrorActionPreference = "Stop"
@@ -155,6 +156,11 @@ function Find-SpinnakerWheel {
     return $null
 }
 
+function Test-BridgeBuilt {
+    $bridgeExe = Join-Path $ProjectDir "bridge\build\spinnaker_bridge.exe"
+    return Test-Path $bridgeExe
+}
+
 Write-Host "Instalador VSSS"
 Write-Host "Carpeta: $ProjectDir"
 
@@ -212,22 +218,28 @@ if (!$SkipSpinnaker) {
         if ($null -eq $wheel) {
             Write-Host ""
             Write-Host "No encontre el wheel oficial de Spinnaker/PySpin."
-            Write-Host "Instala FLIR/Teledyne Spinnaker SDK para Windows o copia el wheel a una de estas rutas:"
-            Write-Host "  - Software\drivers"
-            Write-Host "  - Software\vendor"
-            Write-Host "  - Descargas"
-            Write-Host "  - Documentos"
-            Write-Host ""
-            Write-Host "El archivo suele llamarse parecido a:"
-            Write-Host "  spinnaker_python-*-cp310-cp310-win_amd64.whl"
-            Write-Host ""
-            Write-Host "Tambien puedes indicar la ruta exacta:"
-            Write-Host "  .\install.ps1 -SpinnakerWheel `"C:\ruta\spinnaker_python-...-cp310-cp310-win_amd64.whl`""
-            Write-Host ""
-            Write-Host "Puedes usar la app en modo mock/webcam mientras tanto."
+            Write-Host "No es bloqueante si el puente C++ compila correctamente."
         } else {
             Invoke-Checked "Instalando PySpin desde $wheel" {
                 & $VenvPython -m pip install --force-reinstall $wheel
+            }
+        }
+    }
+}
+
+if (!$SkipBridge) {
+    if (Test-BridgeBuilt) {
+        Write-Host "Puente C++ Spinnaker ya compilado."
+    } else {
+        $bridgeBuild = Join-Path $ProjectDir "bridge\build_bridge.ps1"
+        if (Test-Path $bridgeBuild) {
+            try {
+                & $bridgeBuild
+            } catch {
+                Write-Host ""
+                Write-Host "No se pudo compilar el puente C++ Spinnaker."
+                Write-Host "Instala Visual Studio Build Tools con el workload C++ y Spinnaker SDK."
+                Write-Host "Detalle: $($_.Exception.Message)"
             }
         }
     }
@@ -243,6 +255,8 @@ Write-Host "Prueba sin hardware:"
 Write-Host "  .\run.ps1 --camera mock"
 Write-Host "Prueba GigE:"
 Write-Host "  .\run.ps1 --camera gige"
+Write-Host "Forzar puente C++:"
+Write-Host "  .\run.ps1 --camera gige-bridge"
 
 if ($Run) {
     $runArgs = @("--camera", $Camera)
