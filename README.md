@@ -24,8 +24,9 @@ El firmware corta motores si no recibe comandos por mas de 200 ms, por eso este 
 Requisitos:
 
 - Windows 10/11
-- Python 3.10 o superior
-- Para camara GigE/FLIR: SDK FLIR Spinnaker instalado, incluyendo el modulo Python `PySpin`
+- Python 3.10 de 64 bits
+- Spinnaker SDK para camara GigE/FLIR
+- Visual Studio Build Tools con C++ para compilar el puente C++ si no usas PySpin
 
 Desde PowerShell, dentro de la carpeta `Software`:
 
@@ -51,38 +52,37 @@ Para instalar y abrir en una sola llamada:
 .\install.ps1 -Run -Camera mock
 ```
 
-Tambien puedes ejecutar `run.bat` con doble click. Si no pasas argumentos abre el modo `mock`, que sirve para verificar que la instalacion funciona.
+## Camara GigE hibrida
 
-## Uso manual
+El modo `gige` intenta dos caminos, en este orden:
 
-Instalar dependencias:
+1. PySpin oficial de FLIR/Spinnaker, si esta instalado para Python 3.10.
+2. Puente C++ `bridge\build\spinnaker_bridge.exe`, que usa directamente el SDK Spinnaker y entrega frames a Python.
 
-```bash
-pip install -r requirements.txt
+Esto permite correr la interfaz, vision y estrategias en Python, pero capturar la camara desde C++ cuando PySpin sea problematico.
+
+Usar camara GigE:
+
+```powershell
+.\run.ps1 --camera gige
 ```
 
-Probar sin hardware:
+Forzar el puente C++:
 
-```bash
-python main.py --camera mock
+```powershell
+.\run.ps1 --camera gige-bridge
 ```
 
-Usar webcam:
+Compilar solo el puente C++:
 
-```bash
-python main.py --camera webcam
+```powershell
+.\bridge\build_bridge.ps1
 ```
 
-Usar camara GigE/FLIR:
+Si el build no encuentra Spinnaker:
 
-```bash
-python main.py --camera gige
-```
-
-Enviar a la base station:
-
-```bash
-python main.py --camera gige --port COM5 --send
+```powershell
+.\bridge\build_bridge.ps1 -SpinnakerRoot "C:\Program Files\Teledyne\Spinnaker"
 ```
 
 ## Comandos recomendados
@@ -119,32 +119,17 @@ Usar camara GigE/FLIR y enviar comandos a la base station:
 
 Antes de usar `--send`, confirma que la base station esta conectada al puerto correcto y que los robots estan elevados o en una zona segura. El boton `STOP` manda ceros a los cinco robots.
 
-## Camara GigE/FLIR y PySpin
+## PySpin opcional
 
 `opencv-contrib-python`, `numpy` y `pyserial` se instalan con `install.ps1`. El instalador tambien busca e instala automaticamente el wheel oficial de PySpin si encuentra Spinnaker SDK instalado o si copias el `.whl` a `Software\drivers`, `Software\vendor` o `Descargas`.
 
-Para usar `--camera gige` necesitas el SDK oficial FLIR/Teledyne Spinnaker para Windows y Python 3.10 de 64 bits. El instalador recrea `.venv` si detecta que fue creado con otra version de Python.
-
-Comprueba si esta listo con:
+Comprueba si PySpin oficial esta listo con:
 
 ```powershell
 .\.venv\Scripts\python.exe -c "import PySpin; print(PySpin.System.GetInstance())"
 ```
 
-Si `import PySpin` funciona pero aparece un error como `module 'PySpin' has no attribute 'System'`, tienes instalado un paquete equivocado llamado `pyspin`/`PySpin` desde pip. Ese no es el SDK de FLIR. Corrige con:
-
-```powershell
-pip uninstall -y pyspin PySpin
-```
-
-Luego instala el `.whl` oficial que viene con Spinnaker para tu version de Python.
-
-Si falla, la app igual puede correr en modo simulacion o webcam:
-
-```powershell
-.\run.ps1 --camera mock
-.\run.ps1 --camera webcam
-```
+Si `import PySpin` funciona pero aparece un error como `module 'PySpin' has no attribute 'System'`, tienes instalado un paquete equivocado llamado `pyspin`/`PySpin` desde pip. Ese no es el SDK de FLIR.
 
 ## Calibracion
 
