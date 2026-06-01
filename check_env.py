@@ -1,6 +1,7 @@
 import argparse
 import importlib
 import importlib.util
+import os
 import platform
 import sys
 
@@ -56,16 +57,19 @@ def main():
 
     pyspin_ok, pyspin_status = validate_pyspin()
     print(f"PySpin/Spinnaker: {pyspin_status if pyspin_ok else pyspin_status + ' - requerido solo para --camera gige'}")
+    bridge_path = os.path.join(os.path.dirname(__file__), "bridge", "build", "spinnaker_bridge.exe")
+    bridge_ok = os.path.exists(bridge_path)
+    print(f"Bridge C++ Spinnaker: {'OK' if bridge_ok else 'NO COMPILADO - fallback para --camera gige'}")
     if args.require_gige and not pyspin_ok:
-        print("")
-        print("ERROR: --camera gige requiere el PySpin oficial de FLIR/Spinnaker.")
-        print("Si instalaste un paquete llamado pyspin desde pip, no sirve para camaras FLIR.")
-        print("Corrige con:")
-        print("  pip uninstall -y pyspin PySpin")
-        print("  pip install <ruta_al_wheel_de_spinnaker_para_tu_python>")
-        print("Prueba final:")
-        print("  .\\.venv\\Scripts\\python.exe -c \"import PySpin; print(PySpin.System.GetInstance())\"")
-        ok = False
+        if bridge_ok:
+            print("PySpin no esta disponible, pero el bridge C++ esta listo para --camera gige.")
+        else:
+            print("")
+            print("ERROR: --camera gige requiere PySpin oficial o el bridge C++ Spinnaker compilado.")
+            print("Para el bridge C++ instala Spinnaker SDK y Visual Studio Build Tools con C++.")
+            print("Luego ejecuta:")
+            print("  .\\bridge\\build_bridge.ps1")
+            ok = False
 
     return 0 if ok else 1
 
