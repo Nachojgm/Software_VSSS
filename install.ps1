@@ -3,6 +3,7 @@ param(
     [ValidateSet("mock", "webcam", "gige")]
     [string]$Camera = "mock",
     [string]$Port = "",
+    [string]$SpinnakerWheel = "",
     [switch]$Send,
     [switch]$SkipSpinnaker
 )
@@ -110,6 +111,13 @@ function Test-OfficialPySpin {
 }
 
 function Find-SpinnakerWheel {
+    if ($SpinnakerWheel) {
+        if (Test-Path $SpinnakerWheel) {
+            return (Resolve-Path $SpinnakerWheel).Path
+        }
+        throw "La ruta entregada en -SpinnakerWheel no existe: $SpinnakerWheel"
+    }
+
     $patterns = @(
         "spinnaker_python*cp310*win_amd64.whl",
         "spinnaker_python*py3*none*win_amd64.whl",
@@ -121,6 +129,14 @@ function Find-SpinnakerWheel {
         (Join-Path $ProjectDir "drivers"),
         (Join-Path $ProjectDir "vendor"),
         "$env:USERPROFILE\Downloads",
+        "$env:USERPROFILE\Documents",
+        "$env:USERPROFILE\Desktop",
+        "$env:ProgramFiles\Teledyne",
+        "$env:ProgramFiles\Teledyne DALSA",
+        "$env:ProgramFiles\FLIR Systems",
+        "$env:ProgramFiles\Point Grey Research",
+        "${env:ProgramFiles(x86)}\Teledyne",
+        "${env:ProgramFiles(x86)}\FLIR Systems",
         "$env:ProgramFiles",
         "${env:ProgramFiles(x86)}"
     ) | Where-Object { $_ -and (Test-Path $_) }
@@ -184,7 +200,13 @@ if (!$SkipSpinnaker) {
         Write-Host "PySpin oficial de Spinnaker ya esta instalado."
     } else {
         Write-Host "PySpin oficial no esta disponible. Buscando wheel de Spinnaker para Python 3.10..."
-        & $VenvPython -m pip uninstall -y pyspin PySpin spinnaker-python spinnaker_python 2>$null
+        $previousErrorAction = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+        try {
+            & $VenvPython -m pip uninstall -y pyspin PySpin spinnaker-python spinnaker_python *> $null
+        } finally {
+            $ErrorActionPreference = $previousErrorAction
+        }
 
         $wheel = Find-SpinnakerWheel
         if ($null -eq $wheel) {
@@ -194,9 +216,13 @@ if (!$SkipSpinnaker) {
             Write-Host "  - Software\drivers"
             Write-Host "  - Software\vendor"
             Write-Host "  - Descargas"
+            Write-Host "  - Documentos"
             Write-Host ""
             Write-Host "El archivo suele llamarse parecido a:"
             Write-Host "  spinnaker_python-*-cp310-cp310-win_amd64.whl"
+            Write-Host ""
+            Write-Host "Tambien puedes indicar la ruta exacta:"
+            Write-Host "  .\install.ps1 -SpinnakerWheel `"C:\ruta\spinnaker_python-...-cp310-cp310-win_amd64.whl`""
             Write-Host ""
             Write-Host "Puedes usar la app en modo mock/webcam mientras tanto."
         } else {
