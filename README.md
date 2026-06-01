@@ -25,7 +25,7 @@ Requisitos:
 
 - Windows 10/11
 - Python 3.10 o superior
-- Para camara GigE/FLIR: SDK FLIR Spinnaker instalado, incluyendo PySpin
+- Para camara GigE/FLIR: SDK FLIR Spinnaker instalado, incluyendo el modulo Python `PySpin`
 
 Desde PowerShell, dentro de la carpeta `Software`:
 
@@ -106,6 +106,23 @@ Usar camara GigE/FLIR y enviar comandos a la base station:
 ```
 
 Antes de usar `--send`, confirma que la base station esta conectada al puerto correcto y que los robots estan elevados o en una zona segura. El boton `STOP` manda ceros a los cinco robots.
+
+## Camara GigE/FLIR y PySpin
+
+`opencv-contrib-python` y `pyserial` se instalan con `install.ps1`, pero `PySpin` normalmente no viene desde pip. Para usar `--camera gige` necesitas instalar el SDK oficial FLIR Spinnaker en ese PC y dejar disponible su modulo Python dentro del entorno.
+
+Comprueba si esta listo con:
+
+```powershell
+.\.venv\Scripts\python.exe -c "import PySpin; print('PySpin OK')"
+```
+
+Si falla, la app igual puede correr en modo simulacion o webcam:
+
+```powershell
+.\run.ps1 --camera mock
+.\run.ps1 --camera webcam
+```
 
 ## Calibracion
 
