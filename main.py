@@ -9,6 +9,7 @@ import cv2
 
 from acquisition.camera_gige import GigECamera
 from acquisition.camera_mock import MockCamera
+from acquisition.camera_spinnaker_bridge import SpinnakerBridgeCamera
 from acquisition.camera_webcam import WebcamCamera
 from comunication.base_station_serial import BaseStationSerial, CommandStreamer
 from config import AppConfig, NUM_ROBOTS
@@ -54,7 +55,13 @@ class VSSSApp:
 
     def _create_camera(self, camera_name):
         if camera_name == "gige":
-            return GigECamera()
+            try:
+                return GigECamera()
+            except RuntimeError as exc:
+                print(f"PySpin no disponible, usando puente C++ Spinnaker: {exc}")
+                return SpinnakerBridgeCamera()
+        if camera_name == "gige-bridge":
+            return SpinnakerBridgeCamera()
         if camera_name == "webcam":
             return WebcamCamera(0)
         return MockCamera()
@@ -197,7 +204,7 @@ class VSSSApp:
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description="Software VSSS: vision, jugadas y comunicacion")
-    parser.add_argument("--camera", choices=["gige", "webcam", "mock"], default="mock")
+    parser.add_argument("--camera", choices=["gige", "gige-bridge", "webcam", "mock"], default="mock")
     parser.add_argument("--port", default="", help="Puerto serial de la base station, por ejemplo COM5")
     parser.add_argument("--baud", type=int, default=115200)
     parser.add_argument("--send", action="store_true", help="Enviar comandos reales por serial")
