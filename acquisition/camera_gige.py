@@ -14,6 +14,11 @@ class GigECamera(CameraBase):
             raise RuntimeError(
                 "PySpin no esta instalado. Instala FLIR Spinnaker o usa --camera webcam/mock."
             )
+        if not hasattr(PySpin, "System"):
+            raise RuntimeError(
+                "El modulo PySpin encontrado no es el SDK de FLIR/Spinnaker. "
+                "Desinstala pyspin/PySpin de pip e instala el wheel oficial del SDK Spinnaker."
+            )
         self.system = PySpin.System.GetInstance()
         self.cam_list = self.system.GetCameras()
         if self.cam_list.GetSize() == 0:
@@ -55,7 +60,7 @@ class GigECamera(CameraBase):
         img = image.GetNDArray()
         image.Release()
 
-        # --- CONVERSIÓN PARA FLIR ---
+        # --- CONVERSIÃ“N PARA FLIR ---
         # BayerRG8 -> BGR
         if len(img.shape) == 2:
             img = cv2.cvtColor(img, cv2.COLOR_BAYER_BG2BGR)
@@ -64,7 +69,7 @@ class GigECamera(CameraBase):
             img = cv2.cvtColor(img, cv2.COLOR_BAYER_BG2BGR)
 
         elif len(img.shape) == 3 and img.shape[2] == 3:
-            pass  # ya está bien
+            pass  # ya estÃ¡ bien
 
         else:
             raise RuntimeError(f"Formato no soportado: {img.shape}")
