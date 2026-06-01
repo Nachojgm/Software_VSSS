@@ -11,7 +11,7 @@ class BallDetector:
     def detect(self, frame):
 
         if frame is None:
-            return {"found": False}
+            return {"found": False, "mask": None}
 
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 

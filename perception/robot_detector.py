@@ -4,11 +4,10 @@ import numpy as np
 
 class RobotDetector:
 
-    def __init__(self):
+    def __init__(self, dictionary_name="DICT_ARUCO_ORIGINAL"):
 
-        self.dictionary = cv2.aruco.getPredefinedDictionary(
-            cv2.aruco.DICT_ARUCO_ORIGINAL
-        )
+        dictionary_id = getattr(cv2.aruco, dictionary_name)
+        self.dictionary = cv2.aruco.getPredefinedDictionary(dictionary_id)
 
         self.parameters = cv2.aruco.DetectorParameters()
 

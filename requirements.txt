@@ -1,0 +1,6 @@
+numpy>=1.26,<3
+opencv-contrib-python>=4.8,<5
+pyserial>=3.5,<4
+
+# Optional, only for FLIR/Spinnaker GigE cameras:
+# PySpin is installed from the FLIR Spinnaker SDK, not usually from pip.

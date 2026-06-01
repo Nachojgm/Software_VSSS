@@ -1,13 +1,25 @@
-import PySpin
 import numpy as np
 import cv2
 from acquisition.camera_base import CameraBase
 
+try:
+    import PySpin
+except ImportError:  # Allows the app to run in mock/webcam mode without Spinnaker.
+    PySpin = None
+
 
 class GigECamera(CameraBase):
     def __init__(self):
+        if PySpin is None:
+            raise RuntimeError(
+                "PySpin no esta instalado. Instala FLIR Spinnaker o usa --camera webcam/mock."
+            )
         self.system = PySpin.System.GetInstance()
         self.cam_list = self.system.GetCameras()
+        if self.cam_list.GetSize() == 0:
+            self.cam_list.Clear()
+            self.system.ReleaseInstance()
+            raise RuntimeError("No se encontro ninguna camara GigE/FLIR.")
         self.cam = self.cam_list[0]
 
     def open(self):
@@ -43,7 +55,7 @@ class GigECamera(CameraBase):
         img = image.GetNDArray()
         image.Release()
 
-        # --- CONVERSIÓN CORRECTA PARA FLIR ---
+        # --- CONVERSIÓN PARA FLIR ---
         # BayerRG8 -> BGR
         if len(img.shape) == 2:
             img = cv2.cvtColor(img, cv2.COLOR_BAYER_BG2BGR)

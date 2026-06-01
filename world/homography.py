@@ -4,10 +4,7 @@ import cv2
 
 class Homography:
 
-    def __init__(self, image_points):
-
-        real_width = 1.50
-        real_height = 1.20
+    def __init__(self, image_points, real_width=1.50, real_height=1.20):
 
         real_points = np.array([
             [0.0, 0.0],
@@ -23,4 +20,10 @@ class Homography:
     def transform(self, x, y):
         point = np.array([[[x, y]]], dtype=np.float32)
         transformed = cv2.perspectiveTransform(point, self.H)
+        return float(transformed[0][0][0]), float(transformed[0][0][1])
+
+    def inverse_transform(self, x, y):
+        inv = np.linalg.inv(self.H)
+        point = np.array([[[x, y]]], dtype=np.float32)
+        transformed = cv2.perspectiveTransform(point, inv)
         return float(transformed[0][0][0]), float(transformed[0][0][1])
