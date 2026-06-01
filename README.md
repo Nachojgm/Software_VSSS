@@ -33,10 +33,22 @@ Desde PowerShell, dentro de la carpeta `Software`:
 .\install.ps1
 ```
 
+Tambien puedes hacer doble click en:
+
+```text
+install.bat
+```
+
 Luego prueba la app sin hardware:
 
 ```powershell
 .\run.ps1 --camera mock
+```
+
+Para instalar y abrir en una sola llamada:
+
+```powershell
+.\install.ps1 -Run -Camera mock
 ```
 
 Tambien puedes ejecutar `run.bat` con doble click. Si no pasas argumentos abre el modo `mock`, que sirve para verificar que la instalacion funciona.
@@ -109,13 +121,23 @@ Antes de usar `--send`, confirma que la base station esta conectada al puerto co
 
 ## Camara GigE/FLIR y PySpin
 
-`opencv-contrib-python` y `pyserial` se instalan con `install.ps1`, pero `PySpin` normalmente no viene desde pip. Para usar `--camera gige` necesitas instalar el SDK oficial FLIR Spinnaker en ese PC y dejar disponible su modulo Python dentro del entorno.
+`opencv-contrib-python`, `numpy` y `pyserial` se instalan con `install.ps1`. El instalador tambien busca e instala automaticamente el wheel oficial de PySpin si encuentra Spinnaker SDK instalado o si copias el `.whl` a `Software\drivers`, `Software\vendor` o `Descargas`.
+
+Para usar `--camera gige` necesitas el SDK oficial FLIR/Teledyne Spinnaker para Windows y Python 3.10 de 64 bits. El instalador recrea `.venv` si detecta que fue creado con otra version de Python.
 
 Comprueba si esta listo con:
 
 ```powershell
-.\.venv\Scripts\python.exe -c "import PySpin; print('PySpin OK')"
+.\.venv\Scripts\python.exe -c "import PySpin; print(PySpin.System.GetInstance())"
 ```
+
+Si `import PySpin` funciona pero aparece un error como `module 'PySpin' has no attribute 'System'`, tienes instalado un paquete equivocado llamado `pyspin`/`PySpin` desde pip. Ese no es el SDK de FLIR. Corrige con:
+
+```powershell
+pip uninstall -y pyspin PySpin
+```
+
+Luego instala el `.whl` oficial que viene con Spinnaker para tu version de Python.
 
 Si falla, la app igual puede correr en modo simulacion o webcam:
 
