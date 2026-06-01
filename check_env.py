@@ -1,4 +1,5 @@
 import argparse
+import importlib
 import importlib.util
 import platform
 import sys
@@ -21,6 +22,22 @@ def parse_args():
     return parser.parse_args()
 
 
+def validate_pyspin():
+    if importlib.util.find_spec("PySpin") is None:
+        return False, "NO INSTALADO"
+
+    try:
+        pyspin = importlib.import_module("PySpin")
+    except Exception as exc:
+        return False, f"NO IMPORTA ({exc})"
+
+    if not hasattr(pyspin, "System"):
+        path = getattr(pyspin, "__file__", "ruta desconocida")
+        return False, f"MODULO INCORRECTO ({path})"
+
+    return True, "OK"
+
+
 def main():
     args = parse_args()
     print(f"Python: {sys.version.split()[0]}")
@@ -37,14 +54,17 @@ def main():
         print(f"{package_name}: {'OK' if found else 'NO INSTALADO'}")
         ok = ok and found
 
-    pyspin = importlib.util.find_spec("PySpin") is not None
-    print(f"PySpin/Spinnaker: {'OK' if pyspin else 'opcional, requerido solo para --camera gige'}")
-    if args.require_gige and not pyspin:
+    pyspin_ok, pyspin_status = validate_pyspin()
+    print(f"PySpin/Spinnaker: {pyspin_status if pyspin_ok else pyspin_status + ' - requerido solo para --camera gige'}")
+    if args.require_gige and not pyspin_ok:
         print("")
-        print("ERROR: --camera gige requiere PySpin.")
-        print("Instala FLIR Spinnaker SDK para Windows y habilita/instala el modulo Python PySpin.")
-        print("Luego prueba:")
-        print("  .\\.venv\\Scripts\\python.exe -c \"import PySpin; print('PySpin OK')\"")
+        print("ERROR: --camera gige requiere el PySpin oficial de FLIR/Spinnaker.")
+        print("Si instalaste un paquete llamado pyspin desde pip, no sirve para camaras FLIR.")
+        print("Corrige con:")
+        print("  pip uninstall -y pyspin PySpin")
+        print("  pip install <ruta_al_wheel_de_spinnaker_para_tu_python>")
+        print("Prueba final:")
+        print("  .\\.venv\\Scripts\\python.exe -c \"import PySpin; print(PySpin.System.GetInstance())\"")
         ok = False
 
     return 0 if ok else 1
