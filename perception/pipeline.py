@@ -1,6 +1,6 @@
 from typing import List, Optional, Tuple
 
-from config import AppConfig
+from config import AppConfig, NUM_ROBOTS
 from perception.ball_detector import BallDetector
 from perception.robot_detector import RobotDetector
 from world.entities import Ball, Robot
@@ -18,6 +18,7 @@ class PerceptionPipeline:
         self.robot_detector = RobotDetector(config.vision.aruco_dictionary)
         self.homography: Optional[Homography] = None
         self.last_ball_mask = None
+        self.dynamic_marker_to_robot = {}
 
     def set_field_corners(self, image_points: List[Tuple[float, float]]):
         if len(image_points) != 4:
@@ -57,7 +58,7 @@ class PerceptionPipeline:
         robots = []
         for detected in detections:
             marker_id = detected["id"]
-            robot_id = self.config.team.marker_to_robot.get(marker_id, marker_id)
+            robot_id = self._robot_id_for_marker(marker_id)
             x_m, y_m = self._to_world(detected["x"], detected["y"])
             robots.append(
                 Robot(
@@ -71,3 +72,21 @@ class PerceptionPipeline:
                 )
             )
         return robots
+
+    def _robot_id_for_marker(self, marker_id):
+        configured = self.config.team.marker_to_robot.get(marker_id)
+        if configured is not None:
+            return configured
+
+        assigned = self.dynamic_marker_to_robot.get(marker_id)
+        if assigned is not None:
+            return assigned
+
+        used_slots = set(self.config.team.marker_to_robot.values())
+        used_slots.update(self.dynamic_marker_to_robot.values())
+        for robot_id in range(1, NUM_ROBOTS + 1):
+            if robot_id not in used_slots:
+                self.dynamic_marker_to_robot[marker_id] = robot_id
+                return robot_id
+
+        return marker_id
