@@ -9,6 +9,8 @@ class Ball:
     x_m: float
     y_m: float
     radius_px: float = 0.0
+    vx_m_s: float = 0.0
+    vy_m_s: float = 0.0
 
 
 @dataclass
@@ -20,6 +22,9 @@ class Robot:
     x_m: float
     y_m: float
     theta: float
+    vx_m_s: float = 0.0
+    vy_m_s: float = 0.0
+    angular_velocity_rad_s: float = 0.0
 
 
 @dataclass
