@@ -71,14 +71,23 @@ function Find-SpinnakerLib {
     ) | Where-Object { Test-Path $_ }
 
     foreach ($dir in $libDirs) {
-        $lib = Get-ChildItem -LiteralPath $dir -Filter "Spinnaker*.lib" -ErrorAction SilentlyContinue |
+        $libs = Get-ChildItem -LiteralPath $dir -Filter "Spinnaker*.lib" -ErrorAction SilentlyContinue
+        $lib = $libs |
+            Where-Object { $_.Name -match '^Spinnaker(_v[0-9]+)?\.lib$' } |
+            Sort-Object Name |
             Select-Object -First 1
+        if ($null -eq $lib) {
+            $lib = $libs |
+                Where-Object { $_.Name -notmatch '^SpinnakerC' -and $_.Name -notmatch 'd(_v[0-9]+)?\.lib$' } |
+                Sort-Object Name |
+                Select-Object -First 1
+        }
         if ($null -ne $lib) {
             return $lib.FullName
         }
     }
 
-    throw "No se encontro Spinnaker*.lib dentro de $Root\lib64."
+    throw "No se encontro la libreria C++ Spinnaker dentro de $Root\lib64."
 }
 
 $root = Find-SpinnakerRoot
