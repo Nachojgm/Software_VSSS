@@ -33,8 +33,11 @@ class VSSSApp:
         self.playbook = Playbook(self.config)
         self.selected_play = tk.StringVar(value="stop")
         self.send_enabled = tk.BooleanVar(value=args.send)
+        self.velocity_multiplier = tk.DoubleVar(value=self.config.control.velocity_multiplier)
+        self.velocity_multiplier_label = tk.StringVar()
         self.status_text = tk.StringVar(value="Inicializando")
         self.last_commands = [(0, 0)] * NUM_ROBOTS
+        self.raw_commands = [(0, 0)] * NUM_ROBOTS
         self.corner_points = []
         self.display_origin = (0, 0)
         self.display_scale = 1.0
@@ -85,6 +88,20 @@ class VSSSApp:
             ttk.Radiobutton(panel, text=play.name, value=play.key, variable=self.selected_play).pack(anchor=tk.W)
 
         ttk.Separator(panel).pack(fill=tk.X, pady=10)
+        ttk.Label(panel, text="Multiplicador velocidad").pack(anchor=tk.W)
+        ttk.Scale(
+            panel,
+            from_=0.01,
+            to=1.0,
+            orient=tk.HORIZONTAL,
+            variable=self.velocity_multiplier,
+            command=self.update_velocity_multiplier,
+        ).pack(fill=tk.X)
+        self._refresh_speed_label()
+        self.velocity_multiplier.trace_add("write", self._refresh_speed_label)
+        ttk.Label(panel, textvariable=self.velocity_multiplier_label).pack(anchor=tk.W)
+
+        ttk.Separator(panel).pack(fill=tk.X, pady=10)
         ttk.Checkbutton(panel, text="Enviar a base station", variable=self.send_enabled, command=self.toggle_send).pack(anchor=tk.W)
         ttk.Button(panel, text="STOP", command=self.stop_now).pack(fill=tk.X, pady=6)
         ttk.Button(panel, text="Limpiar calibracion", command=self.clear_corners).pack(fill=tk.X)
@@ -116,6 +133,9 @@ class VSSSApp:
             self.transport.open()
         self.streamer.enabled = enabled
 
+    def update_velocity_multiplier(self, _value=None):
+        self.config.control.velocity_multiplier = float(self.velocity_multiplier.get())
+
     def stop_now(self):
         self.selected_play.set("stop")
         self.last_commands = [(0, 0)] * NUM_ROBOTS
@@ -131,7 +151,8 @@ class VSSSApp:
             ball, robots = self.pipeline.process(frame)
             self.world.update(ball, robots)
             state = self.world.state()
-            self.last_commands = self.playbook.commands_for(self.selected_play.get(), state)
+            self.raw_commands = self.playbook.commands_for(self.selected_play.get(), state)
+            self.last_commands = self._scale_commands(self.raw_commands)
             self.streamer.set_commands(self.last_commands)
             overlay = draw_overlay(frame, state, homography_ready=self.pipeline.homography is not None)
             self._draw_corner_points(overlay)
@@ -171,20 +192,28 @@ class VSSSApp:
         lines = []
         lines.append(f"Camara: {self.args.camera}")
         lines.append(f"Jugada: {self.selected_play.get()}")
+        lines.append(f"Vel mult: {self.velocity_multiplier.get():.2f}")
         lines.append(f"Envio: {'ON' if self.streamer.enabled else 'OFF'}")
         lines.append(f"Serial: {self.transport.status.port or 'simulado'}")
         if self.transport.status.last_error:
             lines.append(f"Error serial: {self.transport.status.last_error}")
         lines.append("")
         if state.ball:
-            lines.append(f"Pelota: x={state.ball.x_m:.3f} y={state.ball.y_m:.3f}")
+            lines.append(
+                f"Pelota: x={state.ball.x_m:.3f} y={state.ball.y_m:.3f} "
+                f"v=({state.ball.vx_m_s:.2f},{state.ball.vy_m_s:.2f})"
+            )
         else:
             lines.append("Pelota: no detectada")
         lines.append("")
         for robot in state.robots:
-            lines.append(f"R{robot.robot_id} M{robot.marker_id}: x={robot.x_m:.3f} y={robot.y_m:.3f} th={robot.theta:.2f}")
+            lines.append(
+                f"R{robot.robot_id} M{robot.marker_id}: "
+                f"x={robot.x_m:.3f} y={robot.y_m:.3f} "
+                f"v=({robot.vx_m_s:.2f},{robot.vy_m_s:.2f}) th={robot.theta:.2f}"
+            )
         lines.append("")
-        lines.append("Comandos mm/s:")
+        lines.append("Comandos mm/s escalados:")
         for index, (left, right) in enumerate(self.last_commands, start=1):
             lines.append(f"R{index}: L={left:5d} R={right:5d}")
         lines.append("")
@@ -193,6 +222,16 @@ class VSSSApp:
         self.info.delete("1.0", tk.END)
         self.info.insert(tk.END, "\n".join(lines))
         self.status_text.set("OK")
+
+    def _scale_commands(self, commands):
+        multiplier = max(0.01, min(1.0, float(self.velocity_multiplier.get())))
+        return [
+            (int(round(left * multiplier)), int(round(right * multiplier)))
+            for left, right in commands
+        ]
+
+    def _refresh_speed_label(self, *_args):
+        self.velocity_multiplier_label.set(f"{self.velocity_multiplier.get():.2f}x")
 
     def close(self):
         self.running = False
