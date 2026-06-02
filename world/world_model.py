@@ -2,6 +2,7 @@ import math
 import time
 
 from world.entities import Ball, Robot, WorldState
+from world.kalman import AngleTracker, ConstantVelocityKalman2D
 
 
 class WorldModel:
@@ -13,6 +14,9 @@ class WorldModel:
         self.last_position = None
         self.robots = []
         self.ball = None
+        self.ball_filter = ConstantVelocityKalman2D(process_noise=0.8, measurement_noise=0.015)
+        self.robot_filters = {}
+        self.robot_angle_filters = {}
 
     def update_ball(self, x, y, radius=0.0):
 
@@ -33,18 +37,55 @@ class WorldModel:
 
     def update(self, ball, robots):
         current_time = time.time()
-        if ball is not None and self.ball is not None and self.last_time is not None:
-            dt = current_time - self.last_time
-            if dt > 0:
-                self.ball_velocity = (
-                    (ball.x_m - self.ball.x_m) / dt,
-                    (ball.y_m - self.ball.y_m) / dt,
-                )
-        elif ball is None:
+        dt = 1.0 / 30.0 if self.last_time is None else current_time - self.last_time
+
+        if ball is not None:
+            x_m, y_m, vx_m_s, vy_m_s = self.ball_filter.update(ball.x_m, ball.y_m, dt)
+            self.ball = Ball(
+                x_px=ball.x_px,
+                y_px=ball.y_px,
+                x_m=x_m,
+                y_m=y_m,
+                radius_px=ball.radius_px,
+                vx_m_s=vx_m_s,
+                vy_m_s=vy_m_s,
+            )
+            self.ball_velocity = (vx_m_s, vy_m_s)
+        else:
+            self.ball = None
             self.ball_velocity = (0.0, 0.0)
 
-        self.ball = ball
-        self.robots = list(robots)
+        filtered_robots = []
+        seen_robot_ids = set()
+        for robot in robots:
+            seen_robot_ids.add(robot.robot_id)
+            tracker = self.robot_filters.setdefault(
+                robot.robot_id,
+                ConstantVelocityKalman2D(process_noise=0.35, measurement_noise=0.01),
+            )
+            angle_tracker = self.robot_angle_filters.setdefault(robot.robot_id, AngleTracker())
+            x_m, y_m, vx_m_s, vy_m_s = tracker.update(robot.x_m, robot.y_m, dt)
+            theta, omega = angle_tracker.update(robot.theta, dt)
+            filtered_robots.append(
+                Robot(
+                    marker_id=robot.marker_id,
+                    robot_id=robot.robot_id,
+                    x_px=robot.x_px,
+                    y_px=robot.y_px,
+                    x_m=x_m,
+                    y_m=y_m,
+                    theta=theta,
+                    vx_m_s=vx_m_s,
+                    vy_m_s=vy_m_s,
+                    angular_velocity_rad_s=omega,
+                )
+            )
+
+        self.robots = filtered_robots
+        for robot_id in list(self.robot_filters.keys()):
+            if robot_id not in seen_robot_ids:
+                self.robot_filters.pop(robot_id, None)
+                self.robot_angle_filters.pop(robot_id, None)
         self.last_time = current_time
 
     def state(self):
