@@ -49,7 +49,7 @@ class SerialConfig:
 class TeamConfig:
     # Marker id -> logical robot slot in the base-station packet, 1..5.
     marker_to_robot: Dict[int, int] = dataclass_field(
-        default_factory=lambda: {1: 1, 2: 2, 3: 3, 4: 4, 5: 5}
+        default_factory=dict
     )
 
 
