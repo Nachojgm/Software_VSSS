@@ -24,9 +24,8 @@ El firmware corta motores si no recibe comandos por mas de 200 ms, por eso este 
 Requisitos:
 
 - Windows 10/11
-- Python 3.10 de 64 bits
-- Spinnaker SDK para camara GigE/FLIR
-- Visual Studio Build Tools con C++ para compilar el puente C++ si no usas PySpin
+- Python 3.10 o superior
+- Para camara GigE/FLIR: SDK FLIR Spinnaker instalado, incluyendo el modulo Python `PySpin`
 
 Desde PowerShell, dentro de la carpeta `Software`:
 
@@ -52,37 +51,38 @@ Para instalar y abrir en una sola llamada:
 .\install.ps1 -Run -Camera mock
 ```
 
-## Camara GigE hibrida
+Tambien puedes ejecutar `run.bat` con doble click. Si no pasas argumentos abre el modo `mock`, que sirve para verificar que la instalacion funciona.
 
-El modo `gige` intenta dos caminos, en este orden:
+## Uso manual
 
-1. PySpin oficial de FLIR/Spinnaker, si esta instalado para Python 3.10.
-2. Puente C++ `bridge\build\spinnaker_bridge.exe`, que usa directamente el SDK Spinnaker y entrega frames a Python.
+Instalar dependencias:
 
-Esto permite correr la interfaz, vision y estrategias en Python, pero capturar la camara desde C++ cuando PySpin sea problematico.
-
-Usar camara GigE:
-
-```powershell
-.\run.ps1 --camera gige
+```bash
+pip install -r requirements.txt
 ```
 
-Forzar el puente C++:
+Probar sin hardware:
 
-```powershell
-.\run.ps1 --camera gige-bridge
+```bash
+python main.py --camera mock
 ```
 
-Compilar solo el puente C++:
+Usar webcam:
 
-```powershell
-.\bridge\build_bridge.ps1
+```bash
+python main.py --camera webcam
 ```
 
-Si el build no encuentra Spinnaker:
+Usar camara GigE/FLIR:
 
-```powershell
-.\bridge\build_bridge.ps1 -SpinnakerRoot "C:\Program Files\Teledyne\Spinnaker"
+```bash
+python main.py --camera gige
+```
+
+Enviar a la base station:
+
+```bash
+python main.py --camera gige --port COM5 --send
 ```
 
 ## Comandos recomendados
@@ -119,17 +119,71 @@ Usar camara GigE/FLIR y enviar comandos a la base station:
 
 Antes de usar `--send`, confirma que la base station esta conectada al puerto correcto y que los robots estan elevados o en una zona segura. El boton `STOP` manda ceros a los cinco robots.
 
-## PySpin opcional
+## Velocidad segura
+
+La interfaz incluye un multiplicador de velocidad entre `0.01x` y `1.00x`. Parte en `0.10x` para pruebas seguras, y se aplica a las velocidades de rueda justo antes de enviarlas a la base station.
+
+Recomendacion de prueba:
+
+1. Ejecuta sin `--send` y verifica detecciones/comandos.
+2. Usa `--send` con multiplicador bajo.
+3. Sube progresivamente el multiplicador desde la interfaz.
+
+## Tracking
+
+El estado de pelota y robots se suaviza con un filtro Kalman 2D de velocidad constante. Esto reduce ruido de deteccion y entrega velocidades estimadas para estrategia/control.
+
+## Camara GigE/FLIR y PySpin
 
 `opencv-contrib-python`, `numpy` y `pyserial` se instalan con `install.ps1`. El instalador tambien busca e instala automaticamente el wheel oficial de PySpin si encuentra Spinnaker SDK instalado o si copias el `.whl` a `Software\drivers`, `Software\vendor` o `Descargas`.
 
-Comprueba si PySpin oficial esta listo con:
+Para usar `--camera gige`, el software intenta dos caminos:
+
+1. PySpin oficial dentro del entorno Python.
+2. Puente C++ `bridge\build\spinnaker_bridge.exe`, usando directamente el SDK Spinnaker.
+
+El segundo camino evita depender del wheel de PySpin. Necesita Spinnaker SDK y Visual Studio Build Tools con C++.
+
+Comprueba si esta listo con:
 
 ```powershell
 .\.venv\Scripts\python.exe -c "import PySpin; print(PySpin.System.GetInstance())"
 ```
 
-Si `import PySpin` funciona pero aparece un error como `module 'PySpin' has no attribute 'System'`, tienes instalado un paquete equivocado llamado `pyspin`/`PySpin` desde pip. Ese no es el SDK de FLIR.
+Si `import PySpin` funciona pero aparece un error como `module 'PySpin' has no attribute 'System'`, tienes instalado un paquete equivocado llamado `pyspin`/`PySpin` desde pip. Ese no es el SDK de FLIR. Corrige con:
+
+```powershell
+pip uninstall -y pyspin PySpin
+```
+
+Luego instala el `.whl` oficial que viene con Spinnaker para tu version de Python.
+
+Si falla, la app igual puede correr en modo simulacion o webcam:
+
+```powershell
+.\run.ps1 --camera mock
+.\run.ps1 --camera webcam
+```
+
+## Puente C++ Spinnaker
+
+Para compilar solo el puente:
+
+```powershell
+.\bridge\build_bridge.ps1
+```
+
+Para forzar su uso:
+
+```powershell
+.\run.ps1 --camera gige-bridge
+```
+
+El modo normal tambien lo usa automaticamente si PySpin no esta disponible:
+
+```powershell
+.\run.ps1 --camera gige
+```
 
 ## Calibracion
 
