@@ -35,6 +35,7 @@ class ControlConfig:
     angle_kp: float = 3.5
     linear_kp: float = 1.4
     heading_slowdown_rad: float = 1.2
+    velocity_multiplier: float = 0.10
 
 
 @dataclass
