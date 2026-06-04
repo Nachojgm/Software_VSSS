@@ -241,7 +241,7 @@ class VSSSApp:
             "",
             "Pruebas utiles:",
             "bash bridge/build_bridge.sh",
-            "bridge/build/spinnaker_bridge",
+            "bridge/build/spinnaker_bridge --test",
         ])
         self.info.delete("1.0", tk.END)
         self.info.insert(tk.END, "\n".join(lines))
