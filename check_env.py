@@ -57,16 +57,32 @@ def main():
 
     pyspin_ok, pyspin_status = validate_pyspin()
     print(f"PySpin/Spinnaker: {pyspin_status if pyspin_ok else pyspin_status + ' - requerido solo para --camera gige'}")
+    project_dir = os.path.dirname(__file__)
     bridge_name = "spinnaker_bridge.exe" if os.name == "nt" else "spinnaker_bridge"
-    bridge_path = os.path.join(os.path.dirname(__file__), "bridge", "build", bridge_name)
+    bridge_path = os.path.join(project_dir, "bridge", "build", bridge_name)
+    bridge_source = os.path.join(project_dir, "bridge", "spinnaker_bridge.cpp")
+    bridge_script = os.path.join(project_dir, "bridge", "build_bridge.ps1" if os.name == "nt" else "build_bridge.sh")
     bridge_ok = os.path.exists(bridge_path)
-    print(f"Bridge C++ Spinnaker: {'OK' if bridge_ok else 'NO COMPILADO - fallback para --camera gige'}")
+    bridge_stale = (
+        bridge_ok
+        and (
+            (os.path.exists(bridge_source) and os.path.getmtime(bridge_source) > os.path.getmtime(bridge_path))
+            or (os.path.exists(bridge_script) and os.path.getmtime(bridge_script) > os.path.getmtime(bridge_path))
+        )
+    )
+    if bridge_stale:
+        bridge_status = "DESACTUALIZADO - recompila el bridge"
+    elif bridge_ok:
+        bridge_status = "OK"
+    else:
+        bridge_status = "NO COMPILADO - fallback para --camera gige"
+    print(f"Bridge C++ Spinnaker: {bridge_status}")
     if args.require_gige and not pyspin_ok:
-        if bridge_ok:
+        if bridge_ok and not bridge_stale:
             print("PySpin no esta disponible, pero el bridge C++ esta listo para --camera gige.")
         else:
             print("")
-            print("ERROR: --camera gige requiere PySpin oficial o el bridge C++ Spinnaker compilado.")
+            print("ERROR: --camera gige requiere PySpin oficial o el bridge C++ Spinnaker compilado y actualizado.")
             if os.name == "nt":
                 print("Para el bridge C++ instala Spinnaker SDK y Visual Studio Build Tools con C++.")
                 print("Luego ejecuta:")
