@@ -44,6 +44,8 @@ class VSSSApp:
         self.display_scale = 1.0
         self.photo = None
         self.running = True
+        self.closing = False
+        self.loop_after_id = None
 
         self.transport = BaseStationSerial(args.port, args.baud, self.config.control.max_wheel_mm_s)
         if args.send:
@@ -55,7 +57,7 @@ class VSSSApp:
         self._build_ui()
         self.camera.open()
         self.root.protocol("WM_DELETE_WINDOW", self.close)
-        self.root.after(10, self.loop)
+        self.loop_after_id = self.root.after(10, self.loop)
 
     def _create_camera(self, camera_name):
         if camera_name == "gige":
@@ -168,7 +170,8 @@ class VSSSApp:
         else:
             self._show_camera_waiting()
 
-        self.root.after(30, self.loop)
+        if self.running and not self.closing:
+            self.loop_after_id = self.root.after(15, self.loop)
 
     def _draw_corner_points(self, frame):
         if frame is None:
@@ -268,10 +271,30 @@ class VSSSApp:
         self.velocity_multiplier_label.set(f"{self.velocity_multiplier.get():.2f}x")
 
     def close(self):
+        if self.closing:
+            return
+        self.closing = True
         self.running = False
-        self.streamer.stop()
-        self.camera.release()
-        self.transport.close()
+        if self.loop_after_id is not None:
+            try:
+                self.root.after_cancel(self.loop_after_id)
+            except Exception:
+                pass
+            self.loop_after_id = None
+        try:
+            self.last_commands = [(0, 0)] * NUM_ROBOTS
+            self.streamer.set_commands(self.last_commands)
+            self.streamer.stop()
+        except Exception:
+            pass
+        try:
+            self.camera.release()
+        except Exception:
+            pass
+        try:
+            self.transport.close()
+        except Exception:
+            pass
         self.root.destroy()
 
 
