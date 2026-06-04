@@ -38,6 +38,7 @@ class VSSSApp:
         self.status_text = tk.StringVar(value="Inicializando")
         self.last_commands = [(0, 0)] * NUM_ROBOTS
         self.raw_commands = [(0, 0)] * NUM_ROBOTS
+        self.camera_error = ""
         self.corner_points = []
         self.display_origin = (0, 0)
         self.display_scale = 1.0
@@ -146,7 +147,13 @@ class VSSSApp:
         if not self.running:
             return
 
-        frame = self.camera.read()
+        try:
+            frame = self.camera.read()
+            self.camera_error = ""
+        except Exception as exc:
+            frame = None
+            self.camera_error = str(exc)
+
         if frame is not None:
             ball, robots = self.pipeline.process(frame)
             self.world.update(ball, robots)
@@ -224,7 +231,8 @@ class VSSSApp:
         self.status_text.set("OK")
 
     def _show_camera_waiting(self):
-        error = getattr(self.camera, "last_error", "")
+        error = self.camera_error or getattr(self.camera, "last_error", "")
+        status = getattr(self.camera, "last_status", "")
         lines = [
             f"Camara: {self.args.camera}",
             "Estado: sin frame",
@@ -232,6 +240,8 @@ class VSSSApp:
         if error:
             lines.extend(["", f"Detalle: {error}"])
         else:
+            if status:
+                lines.extend(["", f"Bridge: {status}"])
             lines.extend([
                 "",
                 "Esperando imagen de camara.",
