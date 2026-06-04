@@ -22,7 +22,7 @@ class Playbook:
         self.controller = DifferentialController(config.control)
         self.plays = [
             Play("stop", "Detener", "Todos los robots quedan en cero."),
-            Play("follow_ball", "Seguir pelota", "El robot 1 va hacia la pelota."),
+            Play("follow_ball", "Seguir pelota", "Los robots detectados se ordenan alrededor de la pelota."),
             Play("go_midfield", "Ir al medio", "El equipo se ordena alrededor del centro."),
             Play("spread_field", "Abrir cancha", "Cada robot toma una posicion distinta."),
             Play("attack_mode", "Modo ataque", "Formacion ofensiva hacia el arco rival."),
@@ -36,10 +36,7 @@ class Playbook:
         for robot_id in range(1, NUM_ROBOTS + 1):
             robot = robots_by_id.get(robot_id)
             target = targets.get(robot_id)
-            if play_key == "follow_ball" and robot_id != 1:
-                commands.append((0, 0))
-            else:
-                commands.append(self.controller.go_to_pose(robot, target))
+            commands.append(self.controller.go_to_pose(robot, target))
         return commands
 
     def targets_for(self, play_key: str, state: WorldState) -> Dict[int, Tuple[float, float]]:
@@ -50,7 +47,24 @@ class Playbook:
             return {}
 
         if play_key == "follow_ball":
-            return {1: (state.ball.x_m, state.ball.y_m)} if state.ball else {}
+            if not state.ball:
+                return {}
+            ball_x = state.ball.x_m
+            ball_y = state.ball.y_m
+            offsets = {
+                1: (0.00, 0.00),
+                2: (-0.14, -0.12),
+                3: (-0.14, 0.12),
+                4: (-0.28, -0.18),
+                5: (-0.28, 0.18),
+            }
+            return {
+                robot_id: (
+                    max(0.05, min(length - 0.05, ball_x + offset_x)),
+                    max(0.05, min(width - 0.05, ball_y + offset_y)),
+                )
+                for robot_id, (offset_x, offset_y) in offsets.items()
+            }
 
         if play_key == "go_midfield":
             cx, cy = length * 0.5, width * 0.5
