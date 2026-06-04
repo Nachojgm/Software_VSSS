@@ -31,6 +31,7 @@ class ControlConfig:
     max_wheel_mm_s: int = 1500
     max_linear_m_s: float = 0.65
     max_angular_rad_s: float = 7.0
+    min_wheel_command_mm_s: int = 80
     position_tolerance_m: float = 0.045
     angle_kp: float = 3.5
     linear_kp: float = 1.4
