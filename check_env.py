@@ -57,7 +57,8 @@ def main():
 
     pyspin_ok, pyspin_status = validate_pyspin()
     print(f"PySpin/Spinnaker: {pyspin_status if pyspin_ok else pyspin_status + ' - requerido solo para --camera gige'}")
-    bridge_path = os.path.join(os.path.dirname(__file__), "bridge", "build", "spinnaker_bridge.exe")
+    bridge_name = "spinnaker_bridge.exe" if os.name == "nt" else "spinnaker_bridge"
+    bridge_path = os.path.join(os.path.dirname(__file__), "bridge", "build", bridge_name)
     bridge_ok = os.path.exists(bridge_path)
     print(f"Bridge C++ Spinnaker: {'OK' if bridge_ok else 'NO COMPILADO - fallback para --camera gige'}")
     if args.require_gige and not pyspin_ok:
@@ -66,9 +67,14 @@ def main():
         else:
             print("")
             print("ERROR: --camera gige requiere PySpin oficial o el bridge C++ Spinnaker compilado.")
-            print("Para el bridge C++ instala Spinnaker SDK y Visual Studio Build Tools con C++.")
-            print("Luego ejecuta:")
-            print("  .\\bridge\\build_bridge.ps1")
+            if os.name == "nt":
+                print("Para el bridge C++ instala Spinnaker SDK y Visual Studio Build Tools con C++.")
+                print("Luego ejecuta:")
+                print("  .\\bridge\\build_bridge.ps1")
+            else:
+                print("Para el bridge C++ instala Spinnaker SDK para Linux y g++.")
+                print("Luego ejecuta:")
+                print("  bash bridge/build_bridge.sh")
             ok = False
 
     return 0 if ok else 1
