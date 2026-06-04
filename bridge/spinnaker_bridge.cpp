@@ -28,6 +28,20 @@ void set_continuous_acquisition(CameraPtr camera) {
         acquisition_mode->SetIntValue(continuous->GetValue());
     }
 }
+
+void set_newest_only_buffer(CameraPtr camera) {
+    INodeMap& stream_node_map = camera->GetTLStreamNodeMap();
+    CEnumerationPtr handling_mode = stream_node_map.GetNode("StreamBufferHandlingMode");
+    if (!IsReadable(handling_mode) || !IsWritable(handling_mode)) {
+        return;
+    }
+
+    CEnumEntryPtr newest_only = handling_mode->GetEntryByName("NewestOnly");
+    if (IsReadable(newest_only)) {
+        handling_mode->SetIntValue(newest_only->GetValue());
+    }
+}
+
 bool has_arg(int argc, char* argv[], const std::string& value) {
     for (int i = 1; i < argc; ++i) {
         if (value == argv[i]) {
@@ -62,6 +76,7 @@ int main(int argc, char* argv[]) {
 
         camera = camera_list.GetByIndex(0);
         camera->Init();
+        set_newest_only_buffer(camera);
         set_continuous_acquisition(camera);
 
         ImageProcessor processor;
