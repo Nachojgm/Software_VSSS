@@ -159,7 +159,7 @@ class VSSSApp:
             self._show_frame(overlay)
             self._update_info(state)
         else:
-            self.status_text.set("Sin frame de camara")
+            self._show_camera_waiting()
 
         self.root.after(30, self.loop)
 
@@ -223,6 +223,30 @@ class VSSSApp:
         self.info.insert(tk.END, "\n".join(lines))
         self.status_text.set("OK")
 
+    def _show_camera_waiting(self):
+        error = getattr(self.camera, "last_error", "")
+        lines = [
+            f"Camara: {self.args.camera}",
+            "Estado: sin frame",
+        ]
+        if error:
+            lines.extend(["", f"Detalle: {error}"])
+        else:
+            lines.extend([
+                "",
+                "Esperando imagen de camara.",
+                "Si usas GigE en Linux, revisa que Spinnaker SDK detecte la camara y que el bridge C++ este compilado.",
+            ])
+        lines.extend([
+            "",
+            "Pruebas utiles:",
+            "bash bridge/build_bridge.sh",
+            "bridge/build/spinnaker_bridge",
+        ])
+        self.info.delete("1.0", tk.END)
+        self.info.insert(tk.END, "\n".join(lines))
+        self.status_text.set(f"Sin frame: {error}" if error else "Sin frame de camara")
+
     def _scale_commands(self, commands):
         multiplier = max(0.01, min(1.0, float(self.velocity_multiplier.get())))
         return [
@@ -244,7 +268,7 @@ class VSSSApp:
 def parse_args(argv):
     parser = argparse.ArgumentParser(description="Software VSSS: vision, jugadas y comunicacion")
     parser.add_argument("--camera", choices=["gige", "gige-bridge", "webcam", "mock"], default="mock")
-    parser.add_argument("--port", default="", help="Puerto serial de la base station, por ejemplo COM5")
+    parser.add_argument("--port", default="", help="Puerto serial de la base station, por ejemplo COM5 o /dev/ttyUSB0")
     parser.add_argument("--baud", type=int, default=115200)
     parser.add_argument("--send", action="store_true", help="Enviar comandos reales por serial")
     return parser.parse_args(argv)
