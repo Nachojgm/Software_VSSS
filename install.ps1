@@ -156,9 +156,22 @@ function Find-SpinnakerWheel {
     return $null
 }
 
-function Test-BridgeBuilt {
+function Test-BridgeCurrent {
     $bridgeExe = Join-Path $ProjectDir "bridge\build\spinnaker_bridge.exe"
-    return Test-Path $bridgeExe
+    if (!(Test-Path $bridgeExe)) {
+        return $false
+    }
+
+    $source = Join-Path $ProjectDir "bridge\spinnaker_bridge.cpp"
+    $buildScript = Join-Path $ProjectDir "bridge\build_bridge.ps1"
+    $exeTime = (Get-Item -LiteralPath $bridgeExe).LastWriteTimeUtc
+    foreach ($path in @($source, $buildScript)) {
+        if ((Test-Path $path) -and (Get-Item -LiteralPath $path).LastWriteTimeUtc -gt $exeTime) {
+            return $false
+        }
+    }
+
+    return $true
 }
 
 Write-Host "Instalador VSSS"
@@ -228,7 +241,7 @@ if (!$SkipSpinnaker) {
 }
 
 if (!$SkipBridge) {
-    if (Test-BridgeBuilt) {
+    if (Test-BridgeCurrent) {
         Write-Host "Puente C++ Spinnaker ya compilado."
     } else {
         $bridgeBuild = Join-Path $ProjectDir "bridge\build_bridge.ps1"
