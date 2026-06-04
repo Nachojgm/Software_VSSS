@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "Spinnaker.h"
 
@@ -28,7 +29,6 @@ void set_continuous_acquisition(CameraPtr camera) {
         acquisition_mode->SetIntValue(continuous->GetValue());
     }
 }
-
 bool has_arg(int argc, char* argv[], const std::string& value) {
     for (int i = 1; i < argc; ++i) {
         if (value == argv[i]) {
@@ -36,6 +36,27 @@ bool has_arg(int argc, char* argv[], const std::string& value) {
         }
     }
     return false;
+}
+
+std::string base64_encode(const unsigned char* data, size_t length) {
+    static const char table[] =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::string encoded;
+    encoded.reserve(((length + 2) / 3) * 4);
+
+    for (size_t i = 0; i < length; i += 3) {
+        const unsigned int octet_a = data[i];
+        const unsigned int octet_b = (i + 1 < length) ? data[i + 1] : 0;
+        const unsigned int octet_c = (i + 2 < length) ? data[i + 2] : 0;
+        const unsigned int triple = (octet_a << 16) | (octet_b << 8) | octet_c;
+
+        encoded.push_back(table[(triple >> 18) & 0x3F]);
+        encoded.push_back(table[(triple >> 12) & 0x3F]);
+        encoded.push_back((i + 1 < length) ? table[(triple >> 6) & 0x3F] : '=');
+        encoded.push_back((i + 2 < length) ? table[triple & 0x3F] : '=');
+    }
+
+    return encoded;
 }
 }  // namespace
 
@@ -83,7 +104,7 @@ int main(int argc, char* argv[]) {
             const size_t width = converted->GetWidth();
             const size_t height = converted->GetHeight();
             const size_t bytes = width * height * 3;
-            const char* data = static_cast<const char*>(converted->GetData());
+            const auto* data = static_cast<const unsigned char*>(converted->GetData());
 
             if (test_mode) {
                 std::cerr << "Frame OK: " << width << "x" << height << " bytes=" << bytes << std::endl;
@@ -96,8 +117,10 @@ int main(int argc, char* argv[]) {
                 return 0;
             }
 
-            std::cout << "VSSS_FRAME " << width << " " << height << " " << bytes << "\n";
-            std::cout.write(data, static_cast<std::streamsize>(bytes));
+            const std::string payload = base64_encode(data, bytes);
+            std::cout << "VSSS_FRAME_B64 " << width << " " << height << " "
+                      << bytes << " " << payload.size() << "\n";
+            std::cout.write(payload.data(), static_cast<std::streamsize>(payload.size()));
             std::cout << "\n";
             std::cout.flush();
 
