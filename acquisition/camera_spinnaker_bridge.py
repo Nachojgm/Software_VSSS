@@ -1,5 +1,6 @@
 import os
 import queue
+import base64
 import subprocess
 import sys
 import threading
@@ -78,6 +79,21 @@ class SpinnakerBridgeCamera(CameraBase):
             return None
         try:
             parts = header.decode("ascii").strip().split()
+            if len(parts) == 5 and parts[0] == "VSSS_FRAME_B64":
+                width = int(parts[1])
+                height = int(parts[2])
+                byte_count = int(parts[3])
+                payload_size = int(parts[4])
+                payload = self.process.stdout.read(payload_size)
+                self.process.stdout.read(1)  # trailing newline
+                if len(payload) != payload_size:
+                    return None
+                raw = base64.b64decode(payload, validate=True)
+                if len(raw) != byte_count:
+                    self.last_error = f"Frame incompleto: {len(raw)}/{byte_count} bytes"
+                    return None
+                return np.frombuffer(raw, dtype=np.uint8).reshape((height, width, 3)).copy()
+
             if len(parts) != 4 or parts[0] != "VSSS_FRAME":
                 self.last_error = header.decode("ascii", errors="replace").strip()
                 return None
