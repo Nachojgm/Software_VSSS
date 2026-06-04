@@ -20,8 +20,9 @@ class SpinnakerBridgeCamera(CameraBase):
     def open(self):
         if not os.path.exists(self.executable):
             raise RuntimeError(
-                "No se encontro el puente C++ de Spinnaker. Ejecuta .\\install.ps1 "
-                "o .\\bridge\\build_bridge.ps1 para compilarlo."
+                "No se encontro el puente C++ de Spinnaker. En Windows ejecuta "
+                ".\\install.ps1 o .\\bridge\\build_bridge.ps1. En Linux ejecuta "
+                "bash install.sh o bash bridge/build_bridge.sh."
             )
 
         self.process = subprocess.Popen(
@@ -80,5 +81,5 @@ class SpinnakerBridgeCamera(CameraBase):
 
     def _default_executable(self):
         root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-        exe = os.path.join(root, "bridge", "build", "spinnaker_bridge.exe")
-        return exe
+        name = "spinnaker_bridge.exe" if os.name == "nt" else "spinnaker_bridge"
+        return os.path.join(root, "bridge", "build", name)
