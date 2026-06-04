@@ -1,7 +1,9 @@
 import os
+import queue
 import subprocess
 import sys
 import threading
+import time
 
 import numpy as np
 
@@ -14,7 +16,9 @@ class SpinnakerBridgeCamera(CameraBase):
     def __init__(self, executable=None):
         self.executable = executable or self._default_executable()
         self.process = None
+        self._stdout_thread = None
         self._stderr_thread = None
+        self._frame_queue = queue.Queue(maxsize=2)
         self.last_error = ""
 
     def open(self):
@@ -25,6 +29,7 @@ class SpinnakerBridgeCamera(CameraBase):
                 "bash install.sh o bash bridge/build_bridge.sh."
             )
 
+        print(f"Usando puente Spinnaker: {self.executable}")
         self.process = subprocess.Popen(
             [self.executable],
             stdout=subprocess.PIPE,
@@ -32,8 +37,13 @@ class SpinnakerBridgeCamera(CameraBase):
             stdin=subprocess.DEVNULL,
             bufsize=0,
         )
+        self._stdout_thread = threading.Thread(target=self._read_stdout, daemon=True)
         self._stderr_thread = threading.Thread(target=self._read_stderr, daemon=True)
+        self._stdout_thread.start()
         self._stderr_thread.start()
+        time.sleep(0.2)
+        if self.process.poll() is not None:
+            raise RuntimeError(f"El puente Spinnaker no pudo iniciar: {self.last_error}")
 
     def read(self):
         if self.process is None or self.process.stdout is None:
@@ -41,10 +51,31 @@ class SpinnakerBridgeCamera(CameraBase):
         if self.process.poll() is not None:
             raise RuntimeError(f"El puente Spinnaker termino: {self.last_error}")
 
+        try:
+            return self._frame_queue.get_nowait()
+        except queue.Empty:
+            return None
+
+    def _read_stdout(self):
+        if self.process is None or self.process.stdout is None:
+            return
+        while self.process.poll() is None:
+            frame = self._read_frame_from_stdout()
+            if frame is None:
+                continue
+            if self._frame_queue.full():
+                try:
+                    self._frame_queue.get_nowait()
+                except queue.Empty:
+                    pass
+            self._frame_queue.put(frame)
+
+    def _read_frame_from_stdout(self):
+        if self.process is None or self.process.stdout is None:
+            return None
         header = self.process.stdout.readline()
         if not header:
             return None
-
         try:
             parts = header.decode("ascii").strip().split()
             if len(parts) != 4 or parts[0] != "VSSS_FRAME":
@@ -78,6 +109,7 @@ class SpinnakerBridgeCamera(CameraBase):
             return
         for line in self.process.stderr:
             self.last_error = line.decode("utf-8", errors="replace").strip()
+            print(f"[spinnaker-bridge] {self.last_error}", file=sys.stderr)
 
     def _default_executable(self):
         root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
