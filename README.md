@@ -53,6 +53,58 @@ Para instalar y abrir en una sola llamada:
 
 Tambien puedes ejecutar `run.bat` con doble click. Si no pasas argumentos abre el modo `mock`, que sirve para verificar que la instalacion funciona.
 
+## Instalacion rapida en Linux/Ubuntu
+
+Requisitos:
+
+- Ubuntu o derivado con `apt`
+- Python 3.10 o superior
+- Para camara GigE/FLIR: Spinnaker SDK para Linux instalado
+
+Desde una terminal, dentro de la carpeta del repositorio:
+
+```bash
+bash install.sh
+```
+
+El instalador crea `.venv`, instala dependencias Python, instala paquetes de sistema necesarios (`python3-tk`, compilador C++ y similares) y trata de compilar el puente C++ de Spinnaker si el SDK esta disponible.
+
+Prueba sin hardware:
+
+```bash
+bash run.sh --camera mock
+```
+
+Usar camara GigE/FLIR:
+
+```bash
+bash run.sh --camera gige
+```
+
+Enviar comandos a la base station en Linux:
+
+```bash
+bash run.sh --camera gige --port /dev/ttyUSB0 --send
+```
+
+El puerto puede ser `/dev/ttyUSB0`, `/dev/ttyACM0` u otro similar. Puedes listar puertos con:
+
+```bash
+ls /dev/ttyUSB* /dev/ttyACM* 2>/dev/null
+```
+
+Si Linux no te deja abrir el puerto serial, agrega tu usuario al grupo `dialout` y vuelve a iniciar sesion:
+
+```bash
+sudo usermod -aG dialout $USER
+```
+
+Si ya tienes las dependencias de sistema instaladas o no quieres usar `sudo`:
+
+```bash
+bash install.sh --skip-apt
+```
+
 ## Uso manual
 
 Instalar dependencias:
@@ -83,6 +135,7 @@ Enviar a la base station:
 
 ```bash
 python main.py --camera gige --port COM5 --send
+python main.py --camera gige --port /dev/ttyUSB0 --send
 ```
 
 ## Comandos recomendados
@@ -173,10 +226,28 @@ Para compilar solo el puente:
 .\bridge\build_bridge.ps1
 ```
 
+En Linux/Ubuntu:
+
+```bash
+bash bridge/build_bridge.sh
+```
+
+Si el SDK esta instalado en una ruta no estandar:
+
+```bash
+SPINNAKER_ROOT=/opt/spinnaker bash bridge/build_bridge.sh
+```
+
 Para forzar su uso:
 
 ```powershell
 .\run.ps1 --camera gige-bridge
+```
+
+En Linux/Ubuntu:
+
+```bash
+bash run.sh --camera gige-bridge
 ```
 
 El modo normal tambien lo usa automaticamente si PySpin no esta disponible:
