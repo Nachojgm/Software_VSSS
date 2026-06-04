@@ -73,6 +73,13 @@ PY
   return 1
 }
 
+bridge_needs_build() {
+  [[ ! -x bridge/build/spinnaker_bridge ]] && return 0
+  [[ bridge/spinnaker_bridge.cpp -nt bridge/build/spinnaker_bridge ]] && return 0
+  [[ bridge/build_bridge.sh -nt bridge/build/spinnaker_bridge ]] && return 0
+  return 1
+}
+
 PYTHON_BIN="$(find_python || true)"
 if [[ -z "$PYTHON_BIN" ]]; then
   echo "No se encontro Python >= 3.10."
@@ -101,7 +108,7 @@ PY=".venv/bin/python"
 "$PY" -m pip install --upgrade --force-reinstall -r requirements.txt
 
 if [[ "$SKIP_BRIDGE" -eq 0 ]]; then
-  if [[ -x bridge/build/spinnaker_bridge ]]; then
+  if ! bridge_needs_build; then
     echo "Puente C++ Spinnaker ya compilado."
   else
     if bash bridge/build_bridge.sh; then
