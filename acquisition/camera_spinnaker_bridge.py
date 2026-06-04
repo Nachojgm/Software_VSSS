@@ -19,7 +19,7 @@ class SpinnakerBridgeCamera(CameraBase):
         self.process = None
         self._stdout_thread = None
         self._stderr_thread = None
-        self._frame_queue = queue.Queue(maxsize=2)
+        self._frame_queue = queue.Queue(maxsize=1)
         self._closing = False
         self.last_status = ""
         self.last_error = ""
@@ -71,7 +71,7 @@ class SpinnakerBridgeCamera(CameraBase):
             frame = self._read_frame_from_stdout(stdout)
             if frame is None:
                 continue
-            if self._frame_queue.full():
+            while self._frame_queue.full():
                 try:
                     self._frame_queue.get_nowait()
                 except queue.Empty:
