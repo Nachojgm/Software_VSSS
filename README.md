@@ -232,6 +232,12 @@ En Linux/Ubuntu:
 bash bridge/build_bridge.sh
 ```
 
+Para probar que la camara entrega un frame sin imprimir imagen binaria en la terminal:
+
+```bash
+bridge/build/spinnaker_bridge --test
+```
+
 Si el SDK esta instalado en una ruta no estandar:
 
 ```bash
