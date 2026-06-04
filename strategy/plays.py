@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import math
 from typing import Dict, Iterable, List, Tuple
 
 from config import AppConfig, NUM_ROBOTS
@@ -36,8 +37,30 @@ class Playbook:
         for robot_id in range(1, NUM_ROBOTS + 1):
             robot = robots_by_id.get(robot_id)
             target = targets.get(robot_id)
-            commands.append(self.controller.go_to_pose(robot, target))
+            final_heading = self.final_heading_for(play_key, robot_id, state)
+            fast_turn = self.allow_fast_turn(play_key, robot, state)
+            commands.append(
+                self.controller.go_to_pose(
+                    robot,
+                    target,
+                    final_heading=final_heading,
+                    allow_fast_turn=fast_turn,
+                )
+            )
         return commands
+
+    def final_heading_for(self, play_key: str, robot_id: int, state: WorldState):
+        if play_key == "follow_ball" and robot_id == 1 and state.ball is not None:
+            return 0.0
+        return None
+
+    def allow_fast_turn(self, play_key: str, robot, state: WorldState) -> bool:
+        if play_key != "follow_ball" or robot is None or state.ball is None:
+            return False
+        if robot.robot_id != 1:
+            return False
+        distance_to_ball = math.hypot(state.ball.x_m - robot.x_m, state.ball.y_m - robot.y_m)
+        return distance_to_ball <= self.config.control.kick_distance_m
 
     def targets_for(self, play_key: str, state: WorldState) -> Dict[int, Tuple[float, float]]:
         length = self.config.field.length_m
