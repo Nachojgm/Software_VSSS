@@ -28,11 +28,22 @@ void set_continuous_acquisition(CameraPtr camera) {
         acquisition_mode->SetIntValue(continuous->GetValue());
     }
 }
+
+bool has_arg(int argc, char* argv[], const std::string& value) {
+    for (int i = 1; i < argc; ++i) {
+        if (value == argv[i]) {
+            return true;
+        }
+    }
+    return false;
+}
 }  // namespace
 
-int main() {
+int main(int argc, char* argv[]) {
     std::signal(SIGINT, handle_signal);
     std::signal(SIGTERM, handle_signal);
+
+    const bool test_mode = has_arg(argc, argv, "--test");
 
     SystemPtr system = nullptr;
     CameraList camera_list;
@@ -73,6 +84,17 @@ int main() {
             const size_t height = converted->GetHeight();
             const size_t bytes = width * height * 3;
             const char* data = static_cast<const char*>(converted->GetData());
+
+            if (test_mode) {
+                std::cerr << "Frame OK: " << width << "x" << height << " bytes=" << bytes << std::endl;
+                image->Release();
+                camera->EndAcquisition();
+                camera->DeInit();
+                camera = nullptr;
+                camera_list.Clear();
+                system->ReleaseInstance();
+                return 0;
+            }
 
             std::cout << "VSSS_FRAME " << width << " " << height << " " << bytes << "\n";
             std::cout.write(data, static_cast<std::streamsize>(bytes));
