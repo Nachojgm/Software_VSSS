@@ -30,12 +30,16 @@ class ControlConfig:
     wheel_base_m: float = 0.074
     max_wheel_mm_s: int = 1500
     max_linear_m_s: float = 0.65
-    max_angular_rad_s: float = 7.0
-    min_wheel_command_mm_s: int = 80
+    max_angular_rad_s: float = 3.0
+    kick_max_angular_rad_s: float = 7.0
+    kick_distance_m: float = 0.12
+    min_wheel_command_mm_s: int = 50
     position_tolerance_m: float = 0.045
-    angle_kp: float = 3.5
+    angle_kp: float = 2.0
+    kick_angle_kp: float = 3.5
     linear_kp: float = 1.4
     heading_slowdown_rad: float = 1.2
+    final_heading_tolerance_rad: float = 0.18
     velocity_multiplier: float = 0.10
 
 
