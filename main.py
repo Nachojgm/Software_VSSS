@@ -262,10 +262,26 @@ class VSSSApp:
 
     def _scale_commands(self, commands):
         multiplier = max(0.01, min(1.0, float(self.velocity_multiplier.get())))
-        return [
-            (int(round(left * multiplier)), int(round(right * multiplier)))
-            for left, right in commands
-        ]
+        return [self._scale_wheel_pair(left, right, multiplier) for left, right in commands]
+
+    def _scale_wheel_pair(self, left, right, multiplier):
+        scaled_left = int(round(left * multiplier))
+        scaled_right = int(round(right * multiplier))
+        if left != 0 and scaled_left == 0:
+            scaled_left = 1 if left > 0 else -1
+        if right != 0 and scaled_right == 0:
+            scaled_right = 1 if right > 0 else -1
+
+        deadband = int(self.config.control.min_wheel_command_mm_s)
+        if deadband > 0:
+            scaled_left = self._apply_deadband(scaled_left, deadband)
+            scaled_right = self._apply_deadband(scaled_right, deadband)
+        return scaled_left, scaled_right
+
+    def _apply_deadband(self, value, deadband):
+        if value == 0 or abs(value) >= deadband:
+            return value
+        return deadband if value > 0 else -deadband
 
     def _refresh_speed_label(self, *_args):
         self.velocity_multiplier_label.set(f"{self.velocity_multiplier.get():.2f}x")
